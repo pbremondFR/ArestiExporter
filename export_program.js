@@ -11,30 +11,30 @@ if (!olanSequence) {
 }
 
 function processArchive(zipPath, targetDir, formIdentifier) {
-    const zip = new AdmZip(zipPath);
-    zip.extractAllTo(targetDir, true);
+	const zip = new AdmZip(zipPath);
+	zip.extractAllTo(targetDir, true);
 
-    const files = fs.readdirSync(targetDir);
+	const files = fs.readdirSync(targetDir);
 
-    files.forEach(file => {
-        if (file.endsWith('.zip')) {
-            return;
-        }
+	files.forEach(file => {
+		if (file.endsWith('.zip')) {
+			return;
+		}
 
-        // Extract the sequence number from the original filename
-        const match = file.match(/(\d+)/);
-        const figureNumber = match ? match[1].padStart(2, '0') : "00";
-        const extension = path.extname(file);
+		// Extract the sequence number from the original filename
+		const match = file.match(/(\d+)/);
+		const figureNumber = match ? match[1].padStart(2, '0') : "00";
+		const extension = path.extname(file);
 
-        const newName = `Aresti_${formIdentifier}_Fig_${figureNumber}${extension}`;
+		const newName = `Aresti_${formIdentifier}_Fig_${figureNumber}${extension}`;
 
-        fs.renameSync(
-            path.join(targetDir, file),
-            path.join(targetDir, newName)
-        );
-    });
+		fs.renameSync(
+			path.join(targetDir, file),
+			path.join(targetDir, newName)
+		);
+	});
 
-    fs.unlinkSync(zipPath);
+	fs.unlinkSync(zipPath);
 }
 
 (async () => {
@@ -43,9 +43,9 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 		acceptDownloads: true,
 		slowMo: 100,
 		args: [
-            '--allow-file-access-from-files',
-            '--disable-features=InsecureDownloadWarnings'
-        ]
+			'--allow-file-access-from-files',
+			'--disable-features=InsecureDownloadWarnings'
+		]
 	});
 
 	const page = await browser.newPage();
@@ -76,17 +76,17 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 	await page.click('#t_file');
 	await page.click('#t_saveFigsSeparate');
 	await page.click('#t_saveFile');
-    const dirFormB = path.join(__dirname, 'output', 'Form_B');
+	const dirFormB = path.join(__dirname, 'output', 'Form_B');
 
-    if (!fs.existsSync(dirFormB)) {
-        fs.mkdirSync(dirFormB, { recursive: true });
-    }
+	if (!fs.existsSync(dirFormB)) {
+		fs.mkdirSync(dirFormB, { recursive: true });
+	}
 
 	const downloadFormB = await downloadFormBPromise;
 	const pathFormB = path.join(dirFormB, downloadFormB.suggestedFilename());
-    await downloadFormB.saveAs(pathFormB);
+	await downloadFormB.saveAs(pathFormB);
 	processArchive(pathFormB, dirFormB, "FormB");
-    console.log("Form B downloaded.");
+	console.log("Form B downloaded.");
 
 	// FORM C generation
 	console.log("Generating form C...");
@@ -98,16 +98,16 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 	await page.click('#t_saveFigsSeparate');
 	await page.click('#t_saveFile');
 
-    const dirFormC = path.join(__dirname, 'output', 'Form_C');
-    if (!fs.existsSync(dirFormC)) {
-        fs.mkdirSync(dirFormC, { recursive: true });
-    }
+	const dirFormC = path.join(__dirname, 'output', 'Form_C');
+	if (!fs.existsSync(dirFormC)) {
+		fs.mkdirSync(dirFormC, { recursive: true });
+	}
 
 	const downloadFormC = await downloadFormCPromise;
 	const pathFormC = path.join(dirFormC, downloadFormC.suggestedFilename());
-    await downloadFormB.saveAs(pathFormC);
+	await downloadFormB.saveAs(pathFormC);
 	processArchive(pathFormC, dirFormC, "FormC");
-    console.log("Form C downloaded.");
+	console.log("Form C downloaded.");
 
 
 	console.log("DONE.");
