@@ -1,12 +1,40 @@
 const { firefox } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const AdmZip = require('adm-zip');
 
 const olanSequence = process.argv[2];
 
 if (!olanSequence) {
 	console.error("Error: no provided aresti (OLAN format) sequence.");
 	process.exit(1);
+}
+
+function processArchive(zipPath, targetDir, formIdentifier) {
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(targetDir, true);
+
+    const files = fs.readdirSync(targetDir);
+
+    files.forEach(file => {
+        if (file.endsWith('.zip')) {
+            return;
+        }
+
+        // Extract the sequence number from the original filename
+        const match = file.match(/(\d+)/);
+        const figureNumber = match ? match[1].padStart(2, '0') : "00";
+        const extension = path.extname(file);
+
+        const newName = `Aresti_${formIdentifier}_Fig_${figureNumber}${extension}`;
+
+        fs.renameSync(
+            path.join(targetDir, file),
+            path.join(targetDir, newName)
+        );
+    });
+
+    fs.unlinkSync(zipPath);
 }
 
 (async () => {
@@ -26,7 +54,6 @@ if (!olanSequence) {
 
 	await page.goto(`file://${openaeroPath}`);
 
-	// --- GESTION DE LA POPUP ---
 	console.log("Waiting for introduction popup...");
 	try {
 		const closeButton = await page.waitForSelector('#t_closeAlert', { state: 'visible', timeout: 5000 });
@@ -56,7 +83,9 @@ if (!olanSequence) {
     }
 
 	const downloadFormB = await downloadFormBPromise;
-    await downloadFormB.saveAs(path.join(dirFormB, downloadFormB.suggestedFilename()));
+	const pathFormB = path.join(dirFormB, downloadFormB.suggestedFilename());
+    await downloadFormB.saveAs(pathFormB);
+	processArchive(pathFormB, dirFormB, "FormB");
     console.log("Form B downloaded.");
 
 	// FORM C generation
@@ -75,7 +104,9 @@ if (!olanSequence) {
     }
 
 	const downloadFormC = await downloadFormCPromise;
-    await downloadFormC.saveAs(path.join(dirFormC, downloadFormC.suggestedFilename()));
+	const pathFormC = path.join(dirFormC, downloadFormC.suggestedFilename());
+    await downloadFormB.saveAs(pathFormC);
+	processArchive(pathFormC, dirFormC, "FormC");
     console.log("Form C downloaded.");
 
 
