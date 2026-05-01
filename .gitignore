@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 
 # Generated Aresti figures
 output/
+sample_programs/

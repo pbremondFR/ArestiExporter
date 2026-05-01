@@ -2,15 +2,10 @@ const { firefox } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
+const { XMLParser } = require('fast-xml-parser');
+const { parseArgs } = require('node:util');
 
-const olanSequence = process.argv[2];
-
-if (!olanSequence) {
-	console.error("Error: no provided aresti (OLAN format) sequence.");
-	process.exit(1);
-}
-
-function processArchive(zipPath, targetDir, formIdentifier) {
+function processArchive(zipPath, targetDir, formIdentifier, prefix) {
 	const zip = new AdmZip(zipPath);
 	zip.extractAllTo(targetDir, true);
 
@@ -26,7 +21,7 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 		const figureNumber = match ? match[1].padStart(2, '0') : "00";
 		const extension = path.extname(file);
 
-		const newName = `Aresti_${formIdentifier}_Fig_${figureNumber}${extension}`;
+		const newName = `${prefix}${formIdentifier}_Fig_${figureNumber}${extension}`;
 
 		fs.renameSync(
 			path.join(targetDir, file),
@@ -37,7 +32,7 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 	fs.unlinkSync(zipPath);
 }
 
-(async () => {
+async function exportImages(arestiSequenceText, prefix) {
 	const browser = await firefox.launch({
 		headless: false,
 		acceptDownloads: true,
@@ -65,7 +60,7 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 		console.log("wtf no popup?");
 	}
 
-	await page.fill('#sequence_text', olanSequence);
+	await page.fill('#sequence_text', arestiSequenceText);
 
 	// FORM B generation
 	console.log("Generating form B...");
@@ -106,10 +101,79 @@ function processArchive(zipPath, targetDir, formIdentifier) {
 	const downloadFormC = await downloadFormCPromise;
 	const pathFormC = path.join(dirFormC, downloadFormC.suggestedFilename());
 	await downloadFormB.saveAs(pathFormC);
-	processArchive(pathFormC, dirFormC, "FormC");
+	processArchive(pathFormC, dirFormC, "FormC", prefix);
 	console.log("Form C downloaded.");
 
 
 	console.log("DONE.");
 	await browser.close();
+};
+
+function exportFromSeqFile(filePath) {
+	const xmlData = fs.readFileSync(filePath, 'utf8');
+
+	// The default configuration ignores attributes. To parse attributes, use:
+	// const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "_" });
+	const parser = new XMLParser();
+
+	const jsonObj = parser.parse(xmlData);
+
+
+	const properties = {
+		pilot: jsonObj.sequence.pilot,
+		aircraftType: jsonObj.sequence.actype,
+		aircraftReg: jsonObj.sequence.acreg,
+		programName: jsonObj.sequence.program,
+		sequenceText: jsonObj.sequence.sequence_text,
+	}
+
+	console.log(properties);
+
+	const prefix = `${properties.pilot}_${properties.programName}_`;
+
+	exportImages(properties.sequenceText, prefix);
+}
+
+const options = {
+    sequencetext: {
+        type: 'string',
+        short: 't',
+    },
+    file: {
+        type: 'string',
+        short: 'f',
+    },
+    pilot: {
+        type: 'string',
+    },
+	program: {
+		type: 'string',
+	},
+};
+
+function main() {
+	const exitWithUsage = () => {
+		console.error("Usage: node export_program.js [--sequencetext | --file] [sequence-text | .seq-file]");
+		process.exit(1);
+	};
+
+	const { values, positionals } = parseArgs({
+        options,
+        strict: true,
+        allowPositionals: false
+    });
+
+	if (values.file) {
+		exportFromSeqFile(values.file);
+	}
+	else if (values.sequencetext) {
+		exportImages(values.sequencetext, `${values.pilot}_${values.program}_`);
+	}
+	else {
+		exitWithUsage();
+	}
+}
+
+(async () => {
+	main();
 })();
