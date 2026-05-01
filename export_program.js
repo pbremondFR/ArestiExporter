@@ -21,7 +21,7 @@ function processArchive(zipPath, targetDir, formIdentifier, prefix) {
 		const figureNumber = match ? match[1].padStart(2, '0') : "00";
 		const extension = path.extname(file);
 
-		const newName = `${prefix}${formIdentifier}_Fig_${figureNumber}${extension}`;
+		const newName = `${prefix}${formIdentifier}_Fig${figureNumber}${extension}`;
 
 		fs.renameSync(
 			path.join(targetDir, file),
@@ -32,9 +32,9 @@ function processArchive(zipPath, targetDir, formIdentifier, prefix) {
 	fs.unlinkSync(zipPath);
 }
 
-async function exportImages(arestiSequenceText, prefix) {
+async function exportImages(arestiSequenceText, prefix, headless) {
 	const browser = await firefox.launch({
-		headless: false,
+		headless: headless,
 		acceptDownloads: true,
 		slowMo: 100,
 		args: [
@@ -80,7 +80,7 @@ async function exportImages(arestiSequenceText, prefix) {
 	const downloadFormB = await downloadFormBPromise;
 	const pathFormB = path.join(dirFormB, downloadFormB.suggestedFilename());
 	await downloadFormB.saveAs(pathFormB);
-	processArchive(pathFormB, dirFormB, "FormB");
+	processArchive(pathFormB, dirFormB, "FormB", prefix);
 	console.log("Form B downloaded.");
 
 	// FORM C generation
@@ -109,7 +109,7 @@ async function exportImages(arestiSequenceText, prefix) {
 	await browser.close();
 };
 
-function exportFromSeqFile(filePath) {
+function exportFromSeqFile(filePath, headless) {
 	const xmlData = fs.readFileSync(filePath, 'utf8');
 
 	// The default configuration ignores attributes. To parse attributes, use:
@@ -131,7 +131,7 @@ function exportFromSeqFile(filePath) {
 
 	const prefix = `${properties.pilot}_${properties.programName}_`;
 
-	exportImages(properties.sequenceText, prefix);
+	exportImages(properties.sequenceText, prefix, headless);
 }
 
 const options = {
@@ -149,6 +149,9 @@ const options = {
 	program: {
 		type: 'string',
 	},
+	headless: {
+		type: 'boolean',
+	},
 };
 
 function main() {
@@ -164,10 +167,10 @@ function main() {
     });
 
 	if (values.file) {
-		exportFromSeqFile(values.file);
+		exportFromSeqFile(values.file, !!values.headless);
 	}
 	else if (values.sequencetext) {
-		exportImages(values.sequencetext, `${values.pilot}_${values.program}_`);
+		exportImages(values.sequencetext, `${values.pilot}_${values.program}_`, !!values.headless);
 	}
 	else {
 		exitWithUsage();
