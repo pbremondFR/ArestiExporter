@@ -100,7 +100,7 @@ async function exportImages(arestiSequenceText, prefix, headless) {
 
 	const downloadFormC = await downloadFormCPromise;
 	const pathFormC = path.join(dirFormC, downloadFormC.suggestedFilename());
-	await downloadFormB.saveAs(pathFormC);
+	await downloadFormC.saveAs(pathFormC);
 	processArchive(pathFormC, dirFormC, "FormC", prefix);
 	console.log("Form C downloaded.");
 
