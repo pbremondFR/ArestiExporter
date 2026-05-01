@@ -1,0 +1,3 @@
+[submodule "OpenAero"]
+	path = OpenAero
+	url = git@github.com:OpenAero/main.git
