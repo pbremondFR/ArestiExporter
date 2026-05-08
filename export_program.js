@@ -32,7 +32,7 @@ function processArchive(zipPath, targetDir, formIdentifier, prefix) {
 	fs.unlinkSync(zipPath);
 }
 
-async function exportImages(arestiSequenceText, prefix, headless) {
+async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 	const browser = await firefox.launch({
 		headless: headless,
 		acceptDownloads: true,
@@ -71,7 +71,7 @@ async function exportImages(arestiSequenceText, prefix, headless) {
 	await page.click('#t_file');
 	await page.click('#t_saveFigsSeparate');
 	await page.click('#t_saveFile');
-	const dirFormB = path.join(__dirname, 'output', 'Form_B');
+	const dirFormB = path.join(outputdir, 'Form_B');
 
 	if (!fs.existsSync(dirFormB)) {
 		fs.mkdirSync(dirFormB, { recursive: true });
@@ -93,7 +93,7 @@ async function exportImages(arestiSequenceText, prefix, headless) {
 	await page.click('#t_saveFigsSeparate');
 	await page.click('#t_saveFile');
 
-	const dirFormC = path.join(__dirname, 'output', 'Form_C');
+	const dirFormC = path.join(outputdir, 'Form_C');
 	if (!fs.existsSync(dirFormC)) {
 		fs.mkdirSync(dirFormC, { recursive: true });
 	}
@@ -109,7 +109,7 @@ async function exportImages(arestiSequenceText, prefix, headless) {
 	await browser.close();
 };
 
-function exportFromSeqFile(filePath, headless) {
+function exportFromSeqFile(filePath, headless, outputdir) {
 	const xmlData = fs.readFileSync(filePath, 'utf8');
 
 	// The default configuration ignores attributes. To parse attributes, use:
@@ -131,7 +131,7 @@ function exportFromSeqFile(filePath, headless) {
 
 	const prefix = `${properties.pilot}_${properties.programName}_`;
 
-	exportImages(properties.sequenceText, prefix, headless);
+	exportImages(properties.sequenceText, prefix, headless, outputdir);
 }
 
 const options = {
@@ -152,6 +152,9 @@ const options = {
 	headless: {
 		type: 'boolean',
 	},
+	outputdir: {
+		type: 'string',
+	},
 };
 
 function main() {
@@ -166,11 +169,20 @@ function main() {
         allowPositionals: false
     });
 
+	var outputdir = values.outputdir;
+	if (!outputdir) {
+		outputdir = path.join(__dirname, 'output');
+		console.log("ALLO: ", outputdir);
+	}
+	else {
+		console.log("ALLO: ", outputdir)
+	}
+
 	if (values.file) {
-		exportFromSeqFile(values.file, !!values.headless);
+		exportFromSeqFile(values.file, !!values.headless, outputdir);
 	}
 	else if (values.sequencetext) {
-		exportImages(values.sequencetext, `${values.pilot}_${values.program}_`, !!values.headless);
+		exportImages(values.sequencetext, `${values.pilot}_${values.program}_`, !!values.headless, outputdir);
 	}
 	else {
 		exitWithUsage();
