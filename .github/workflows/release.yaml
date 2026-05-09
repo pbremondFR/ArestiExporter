@@ -1,0 +1,70 @@
+name: Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag de release (ex: v1.0.0). Laisser vide pour juste builder sans créer de release.'
+        required: false
+        type: string
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # Needed to create a release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true  # OpenAero submodule
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install pkg
+        run: npm install -g pkg
+
+      - name: Install Playwright Firefox
+        run: npx playwright-core install firefox
+
+      - name: Build exe
+        run: pkg . --output ArestiExporter.exe
+
+      - name: Copy Firefox next to exe
+        shell: pwsh
+        run: |
+          $src = "$env:LOCALAPPDATA\ms-playwright"
+          $ffFolder = Get-ChildItem $src -Filter "firefox-*" | Select-Object -First 1
+          New-Item -ItemType Directory -Path "firefox"
+          $ffBin = Join-Path $ffFolder.FullName "firefox"
+          Copy-Item "$ffBin\*" -Destination "firefox" -Recurse
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ArestiExporter.exe, firefox, OpenAero `
+                           -DestinationPath ArestiExporter-win-x64.zip
+
+      - name: Upload artifact (toujours disponible)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArestiExporter-win-x64
+          path: |
+            ArestiExporter.exe
+            firefox/
+            OpenAero/
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: ArestiExporter-win-x64.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
