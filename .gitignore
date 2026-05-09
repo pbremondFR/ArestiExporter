@@ -145,3 +145,7 @@ vite.config.ts.timestamp-*
 # Generated Aresti figures
 output/
 sample_programs/
+# Local build of Firefox for packaging
+firefox/
+# Packaged build
+*.exe

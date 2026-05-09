@@ -1,9 +1,12 @@
-const { firefox } = require('playwright');
+const { firefox } = require('playwright-core');
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
 const { XMLParser } = require('fast-xml-parser');
 const { parseArgs } = require('node:util');
+
+// process.pkg is undefined when running with node in dev, but truthy when in the packaged exe
+const baseDir = process.pkg ? path.dirname(process.execPath) : __dirname;
 
 function processArchive(zipPath, targetDir, formIdentifier, prefix) {
 	const zip = new AdmZip(zipPath);
@@ -33,7 +36,15 @@ function processArchive(zipPath, targetDir, formIdentifier, prefix) {
 }
 
 async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
+	// process.pkg is falsy when running with node in dev, but truthy when in the packaged exe
+	// executablePath to undefined is the default behaviour, playwright will look for Firefox in its storage or wherever
+	// Otherwise, we specify the Firefox install location (bundled with the app)
+	const executablePath = process.pkg
+		? path.join(path.dirname(process.execPath), 'firefox', 'firefox.exe')
+		: undefined;
+
 	const browser = await firefox.launch({
+		executablePath,
 		headless: headless,
 		acceptDownloads: true,
 		slowMo: 100,
@@ -45,7 +56,7 @@ async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 
 	const page = await browser.newPage();
 
-	const openaeroPath = path.join(__dirname, 'OpenAero', 'index.html');
+	const openaeroPath = path.join(baseDir, 'OpenAero', 'index.html');
 
 	await page.goto(`file://${openaeroPath}`);
 
@@ -59,6 +70,18 @@ async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 	} catch (error) {
 		console.log("wtf no popup?");
 	}
+
+	// Override default OpenAero values to have thicker lines, necessary for visibility on the overlay
+	await page.evaluate(() => {
+		OA.style.pos = 'stroke: black; stroke-width: 5px; fill: none; vector-effect: non-scaling-stroke;';
+		OA.style.neg = 'stroke-dasharray: 5, 3; stroke: red; stroke-width: 5px; fill: none; vector-effect: non-scaling-stroke;';
+		OA.style.negBW = 'stroke-dasharray: 4, 4; stroke: black; stroke-width: 3px; fill: none; vector-effect: non-scaling-stroke;';
+
+		OA.style['openFigureStartMarker'] = 'stroke: black; stroke-width: 5px; fill: none; vector-effect: non-scaling-stroke;';
+		OA.style['openFigureStartMarker-additional'] = 'stroke: #6060ff; stroke-width: 5px; fill: none; vector-effect: non-scaling-stroke;';
+		OA.style['openFigureStartMarker-correct'] = 'stroke: #7cb342; stroke-width: 5px; fill: none; vector-effect: non-scaling-stroke;';
+		OA.style['openFigureStartMarker-error'] = 'stroke: #ff6040; stroke-width: 5px; fill: none; vector-effect: non-scaling-stroke;';
+	});
 
 	await page.fill('#sequence_text', arestiSequenceText);
 
@@ -118,7 +141,6 @@ function exportFromSeqFile(filePath, headless, outputdir) {
 
 	const jsonObj = parser.parse(xmlData);
 
-
 	const properties = {
 		pilot: jsonObj.sequence.pilot,
 		aircraftType: jsonObj.sequence.actype,
@@ -135,17 +157,17 @@ function exportFromSeqFile(filePath, headless, outputdir) {
 }
 
 const options = {
-    sequencetext: {
-        type: 'string',
-        short: 't',
-    },
-    file: {
-        type: 'string',
-        short: 'f',
-    },
-    pilot: {
-        type: 'string',
-    },
+	sequencetext: {
+		type: 'string',
+		short: 't',
+	},
+	file: {
+		type: 'string',
+		short: 'f',
+	},
+	pilot: {
+		type: 'string',
+	},
 	program: {
 		type: 'string',
 	},
@@ -164,14 +186,14 @@ function main() {
 	};
 
 	const { values, positionals } = parseArgs({
-        options,
-        strict: true,
-        allowPositionals: false
-    });
+		options,
+		strict: true,
+		allowPositionals: false
+	});
 
 	var outputdir = values.outputdir;
 	if (!outputdir) {
-		outputdir = path.join(__dirname, 'output');
+		outputdir = path.join(baseDir, 'output');
 		console.log("ALLO: ", outputdir);
 	}
 	else {
