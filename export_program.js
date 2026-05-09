@@ -5,6 +5,13 @@ const AdmZip = require('adm-zip');
 const { XMLParser } = require('fast-xml-parser');
 const { parseArgs } = require('node:util');
 
+// Small stupid function just to have the number of messages in front of the log. Could be useful for a progress bar, for example.
+var log_message_count = 0;
+function logOutput(...args) {
+	log_message_count++;
+	console.log('#' + log_message_count, ...args);
+}
+
 // process.pkg is undefined when running with node in dev, but truthy when in the packaged exe
 const baseDir = process.pkg ? path.dirname(process.execPath) : __dirname;
 
@@ -60,15 +67,15 @@ async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 
 	await page.goto(`file://${openaeroPath}`);
 
-	console.log("Waiting for introduction popup...");
+	// OpenAero launches this popup the first time site is open. But with Playwright, it's always the first time, so it always appears.
+	logOutput("Waiting for first-time popup...");
 	try {
 		const closeButton = await page.waitForSelector('#t_closeAlert', { state: 'visible', timeout: 5000 });
-		await page.waitForTimeout(500);
 		await closeButton.click();
 		await page.waitForSelector('#t_closeAlert', { state: 'hidden', timeout: 5000 });
-		console.log("Annoying popup closed");
+		logOutput("First-time popup closed");
 	} catch (error) {
-		console.log("wtf no popup?");
+		logOutput("No first-time popup found, continue");
 	}
 
 	// Override default OpenAero values to have thicker lines, necessary for visibility on the overlay
@@ -86,7 +93,7 @@ async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 	await page.fill('#sequence_text', arestiSequenceText);
 
 	// FORM B generation
-	console.log("Generating form B...");
+	logOutput("Generating form B...");
 	await page.click('#t_view');
 	await page.click('#t_formB');
 
@@ -104,10 +111,10 @@ async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 	const pathFormB = path.join(dirFormB, downloadFormB.suggestedFilename());
 	await downloadFormB.saveAs(pathFormB);
 	processArchive(pathFormB, dirFormB, "FormB", prefix);
-	console.log("Form B downloaded.");
+	logOutput("Form B downloaded.");
 
 	// FORM C generation
-	console.log("Generating form C...");
+	logOutput("Generating form C...");
 	await page.click('#t_view');
 	await page.click('#t_formC');
 
@@ -125,10 +132,10 @@ async function exportImages(arestiSequenceText, prefix, headless, outputdir) {
 	const pathFormC = path.join(dirFormC, downloadFormC.suggestedFilename());
 	await downloadFormC.saveAs(pathFormC);
 	processArchive(pathFormC, dirFormC, "FormC", prefix);
-	console.log("Form C downloaded.");
+	logOutput("Form C downloaded.");
 
 
-	console.log("DONE.");
+	logOutput("DONE.");
 	await browser.close();
 };
 
@@ -194,10 +201,10 @@ function main() {
 	var outputdir = values.outputdir;
 	if (!outputdir) {
 		outputdir = path.join(baseDir, 'output');
-		console.log("ALLO: ", outputdir);
+		console.log("Output directory: ", outputdir);
 	}
 	else {
-		console.log("ALLO: ", outputdir)
+		console.log("Output directory: ", outputdir)
 	}
 
 	if (values.file) {
