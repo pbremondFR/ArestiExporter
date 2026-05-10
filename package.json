@@ -23,6 +23,7 @@
   "dependencies": {
     "adm-zip": "^0.5.17",
     "fast-xml-parser": "^5.7.2",
+    "fs-extra": "^11.3.5",
     "playwright-core": "^1.59.1"
   }
 }

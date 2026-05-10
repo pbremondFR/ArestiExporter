@@ -1,5 +1,5 @@
 const { firefox } = require('playwright-core');
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
 const AdmZip = require('adm-zip');
 const { XMLParser } = require('fast-xml-parser');
@@ -206,6 +206,9 @@ function main() {
 	else {
 		console.log("Output directory: ", outputdir)
 	}
+
+	// Clear directory before writing to it
+	fs.emptyDirSync(outputdir)
 
 	if (values.file) {
 		exportFromSeqFile(values.file, !!values.headless, outputdir);
